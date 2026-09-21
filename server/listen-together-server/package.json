@@ -1,0 +1,13 @@
+{
+  "name": "sargam-listen-together-server",
+  "version": "1.0.0",
+  "description": "WebSocket relay server for Sargam Listen Together / Sync Play",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "protobufjs": "^7.2.6",
+    "ws": "^8.16.0"
+  }
+}
