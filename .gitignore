@@ -52,10 +52,15 @@ captures/
 # Comment next line if keeping position of elements in Navigation Editor is relevant for you
 .idea/navEditor.xml
 
-# Keystore files
+# Keystore files and sensitive credentials
 *.jks
 *.keystore
 app/persistent-debug.keystore
+app/google-services.json
+.env
+
+# Node.js dependencies
+**/node_modules/
 
 # Temporary artifacts and scratch files
 .artifacts/
