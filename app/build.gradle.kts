@@ -107,8 +107,8 @@ android {
         applicationId = applicationIdOverride ?: baseApplicationId
         minSdk = 26
         targetSdk = 36
-        versionCode = 155
-        versionName = "13.6.2"
+        versionCode = 156
+        versionName = "13.6.3"
         val baseVersionName = requireNotNull(versionName)
         buildConfigField("String", "BASE_VERSION_NAME", "\"$baseVersionName\"")
         buildCommit?.let { versionName = "$baseVersionName+$it" }
@@ -133,7 +133,7 @@ android {
 
     flavorDimensions += listOf("variant")
     productFlavors {
-        // FOSS - Updater, but no gcast
+        // FOSS - Updater enabled for Sargam
         create("foss") {
             dimension = "variant"
             isDefault = true
@@ -142,7 +142,7 @@ android {
             buildConfigField("Boolean", "UPDATER_AVAILABLE", "true")
         }
 
-        // GMS - Updater and gcast
+        // GMS - Updater enabled for Sargam
         create("gms") {
             dimension = "variant"
             buildConfigField("Boolean", "CAST_AVAILABLE", "true")
@@ -170,11 +170,26 @@ android {
             keyAlias = debugKeyAlias
             keyPassword = debugKeyPassword
         }
+        val sargamCredsFile = file("C:/Users/mishr/sargam-keystore-credentials.txt")
+        val sargamCredsProps = Properties()
+        if (sargamCredsFile.exists()) {
+            sargamCredsFile.useLines { lines ->
+                lines.forEach { line ->
+                    if (line.contains(":")) {
+                        val parts = line.split(":", limit = 2)
+                        sargamCredsProps[parts[0].trim()] = parts[1].trim()
+                    }
+                }
+            }
+        }
+        val sargamPass = System.getenv("STORE_PASSWORD") ?: sargamCredsProps.getProperty("Keystore Password")
+        val sargamAlias = System.getenv("KEY_ALIAS") ?: sargamCredsProps.getProperty("Alias Name") ?: "sargam"
+
         create("release") {
-            storeFile = file("keystore/release.keystore")
-            storePassword = System.getenv("STORE_PASSWORD")
-            keyAlias = System.getenv("KEY_ALIAS")
-            keyPassword = System.getenv("KEY_PASSWORD")
+            storeFile = if (file("keystore/release.keystore").exists()) file("keystore/release.keystore") else file("C:/Users/mishr/sargam-new-release.jks")
+            storePassword = sargamPass
+            keyAlias = sargamAlias
+            keyPassword = sargamPass
         }
         getByName("debug") {
             keyAlias = "androiddebugkey"

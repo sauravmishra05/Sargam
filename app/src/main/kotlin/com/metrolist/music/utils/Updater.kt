@@ -67,17 +67,32 @@ object Updater {
     private var cachedAllReleases: List<ReleaseInfo> = emptyList()
     
     private const val CHECK_INTERVAL_MILLIS = 2 * 60 * 60 * 1000L // 2 hours
-    private const val GITHUB_API_BASE = "https://api.github.com/repos/MetrolistGroup/Metrolist"
-    private const val KMP_RELEASES_URL = "https://api.github.com/repos/MetrolistGroup/Metrolist-KMP/releases?per_page=30"
-    const val KMP_APK_NAME = "Metrolist.apk"
+    private const val GITHUB_API_BASE = "https://api.github.com/repos/sauravmishra05/Sargam"
+    const val KMP_APK_NAME = "app-universal-with-Google-Cast.apk"
+
+    /**
+     * Extracts a clean semantic version string from tag_name or release_name.
+     * Example: "v13.6.2" or "Sargam 13.6.2" -> "13.6.2"
+     */
+    fun extractVersionName(tagName: String, releaseName: String): String {
+        val tagCleaned = tagName.trim().removePrefix("v").removePrefix("V")
+        if (tagCleaned.matches(Regex("""\d+(\.\d+)+.*"""))) {
+            return tagCleaned
+        }
+        val match = Regex("""\d+(\.\d+)+""").find(releaseName)
+        if (match != null) {
+            return match.value
+        }
+        return tagCleaned.ifBlank { releaseName }
+    }
 
     /**
      * Compares two version strings.
      * Returns: 1 if v1 > v2, -1 if v1 < v2, 0 if equal
      */
     fun compareVersions(v1: String, v2: String): Int {
-        val v1Parts = v1.removePrefix("v").split(".").map { it.toIntOrNull() ?: 0 }
-        val v2Parts = v2.removePrefix("v").split(".").map { it.toIntOrNull() ?: 0 }
+        val v1Parts = v1.removePrefix("v").removePrefix("V").split(".").map { it.takeWhile { c -> c.isDigit() }.toIntOrNull() ?: 0 }
+        val v2Parts = v2.removePrefix("v").removePrefix("V").split(".").map { it.takeWhile { c -> c.isDigit() }.toIntOrNull() ?: 0 }
         val maxLength = maxOf(v1Parts.size, v2Parts.size)
         
         for (i in 0 until maxLength) {
@@ -122,19 +137,19 @@ object Updater {
             if (!name.endsWith(".apk")) continue
             
             val downloadUrl = asset.getString("browser_download_url")
-            val size = asset.getLong("size")
+            val size = asset.optLong("size", 0L)
             
-            // Parse architecture and variant from filename
+            // Parse architecture and variant strictly from filename
             val (arch, variant) = when {
-                name == "Metrolist.apk" -> "universal" to "foss"
-                name == "Metrolist-with-Google-Cast.apk" -> "universal" to "gms"
-                name.startsWith("app-") && name.endsWith("-release.apk") -> {
-                    val arch = name.removePrefix("app-").removeSuffix("-release.apk")
-                    arch to "foss"
+                name == "app-universal-with-Google-Cast.apk" || name == "Metrolist-with-Google-Cast.apk" || name == "Sargam-with-Google-Cast.apk" -> "universal" to "gms"
+                name == "app-universal-release.apk" || name == "Metrolist.apk" || name == "Sargam.apk" -> "universal" to "foss"
+                name.startsWith("app-") && name.contains("Google-Cast") -> {
+                    val archStr = name.removePrefix("app-").substringBefore("-with-Google-Cast")
+                    archStr to "gms"
                 }
-                name.startsWith("app-") && name.endsWith("-with-Google-Cast.apk") -> {
-                    val arch = name.removePrefix("app-").removeSuffix("-with-Google-Cast.apk")
-                    arch to "gms"
+                name.startsWith("app-") && name.contains("release") -> {
+                    val archStr = name.removePrefix("app-").substringBefore("-release")
+                    archStr to "foss"
                 }
                 else -> null to null
             }
@@ -153,7 +168,6 @@ object Updater {
     suspend fun getLatestRelease(forceRefresh: Boolean = false): Result<ReleaseInfo> =
         withContext(Dispatchers.IO) {
             runCatching {
-                // Return cached if available and not forcing refresh
                 if (cachedReleaseInfo != null && !forceRefresh) {
                     return@runCatching cachedReleaseInfo!!
                 }
@@ -162,12 +176,16 @@ object Updater {
                     .bodyAsText()
                 val json = JSONObject(response)
                 
+                val tagName = json.getString("tag_name")
+                val rawName = json.optString("name", "")
+                val parsedVersionName = extractVersionName(tagName, rawName)
+
                 val releaseInfo = ReleaseInfo(
-                    tagName = json.getString("tag_name"),
-                    versionName = json.getString("name"),
-                    description = json.getString("body"),
-                    releaseDate = json.getString("published_at"),
-                    assets = parseAssets(json.getJSONArray("assets"))
+                    tagName = tagName,
+                    versionName = parsedVersionName,
+                    description = json.optString("body", ""),
+                    releaseDate = json.optString("published_at", ""),
+                    assets = parseAssets(json.optJSONArray("assets") ?: JSONArray())
                 )
                 
                 cachedReleaseInfo = releaseInfo
@@ -193,6 +211,10 @@ object Updater {
                 while (hasMore && page <= 10) { // Limit to 10 pages
                     val response = client.get("$GITHUB_API_BASE/releases?page=$page&per_page=30")
                         .bodyAsText()
+                    if (response.isBlank() || !response.trim().startsWith("[")) {
+                        hasMore = false
+                        break
+                    }
                     val json = JSONArray(response)
                     
                     if (json.length() == 0) {
@@ -202,12 +224,16 @@ object Updater {
                     
                     for (i in 0 until json.length()) {
                         val releaseObj = json.getJSONObject(i)
+                        val tagName = releaseObj.optString("tag_name", "")
+                        val rawName = releaseObj.optString("name", "")
+                        val parsedVersionName = extractVersionName(tagName, rawName)
+
                         releases.add(ReleaseInfo(
-                            tagName = releaseObj.getString("tag_name"),
-                            versionName = releaseObj.getString("name"),
-                            description = releaseObj.getString("body"),
-                            releaseDate = releaseObj.getString("published_at"),
-                            assets = parseAssets(releaseObj.getJSONArray("assets"))
+                            tagName = tagName,
+                            versionName = parsedVersionName,
+                            description = releaseObj.optString("body", ""),
+                            releaseDate = releaseObj.optString("published_at", ""),
+                            assets = parseAssets(releaseObj.optJSONArray("assets") ?: JSONArray())
                         ))
                     }
                     
@@ -220,38 +246,21 @@ object Updater {
         }
 
     /**
-     * Returns the newest KMP release that provides the migration APK.
+     * Disabled KMP migration lookup.
      */
     suspend fun getLatestKmpRelease(): Result<ReleaseInfo?> =
         withContext(Dispatchers.IO) {
-            runCatching {
-                val releases = JSONArray(client.get(KMP_RELEASES_URL).bodyAsText())
-
-                for (i in 0 until releases.length()) {
-                    val release = releases.getJSONObject(i)
-                    val assets = parseAssets(release.getJSONArray("assets"))
-                    if (assets.none { it.name == KMP_APK_NAME }) continue
-
-                    val tagName = release.getString("tag_name")
-                    return@runCatching ReleaseInfo(
-                        tagName = tagName,
-                        versionName = release.optString("name").takeIf { it.isNotBlank() } ?: tagName,
-                        description = release.optString("body"),
-                        releaseDate = release.getString("published_at"),
-                        assets = assets,
-                    )
-                }
-
-                null
-            }
+            runCatching { null }
         }
 
     /**
-     * Get the download URL for the correct app variant
+     * Get the download URL for the current app variant (gms or foss).
+     * Returns null if no matching variant asset exists in the release.
      */
     fun getDownloadUrlForCurrentVariant(releaseInfo: ReleaseInfo): String? {
         val (currentArch, currentVariant) = getCurrentAppVariant()
         
+        // Strict variant match only — DO NOT fall back to mismatched variant
         return releaseInfo.assets
             .find { it.architecture == currentArch && it.variant == currentVariant }
             ?.downloadUrl
@@ -270,7 +279,6 @@ object Updater {
     suspend fun checkForUpdate(forceRefresh: Boolean = false): Result<Pair<ReleaseInfo?, Boolean>> =
         withContext(Dispatchers.IO) {
             runCatching {
-                // Check if we should fetch (2 hour interval)
                 val shouldFetch = forceRefresh || 
                     (System.currentTimeMillis() - lastCheckTime) > CHECK_INTERVAL_MILLIS
                 
