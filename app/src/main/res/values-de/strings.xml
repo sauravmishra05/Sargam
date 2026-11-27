@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
     <string name="home">Startseite</string>
     <string name="songs">Songs</string>
@@ -170,7 +170,7 @@
     <string name="center">Mitte</string>
     <string name="right">Rechts</string>
     <string name="content">Inhalt</string>
-    <string name="login">Anmeldung</string>
+    <string name="login">AnSargamung</string>
     <string name="content_language">Standard-Inhaltssprache</string>
     <string name="content_country">Standard-Inhaltsland</string>
     <string name="system_default">System-Standard</string>
@@ -223,7 +223,7 @@
     <string name="action_remove_like_all">Alle „Mag ich“ entfernen</string>
     <string name="default_">Standard</string>
     <string name="auto_load_more">Automatisch mehr Songs laden</string>
-    <string name="action_logout">Abmelden</string>
+    <string name="action_logout">AbSargamen</string>
     <string name="theme">Thema</string>
     <string name="other_versions">Andere Versionen</string>
     <string name="stop_music_on_task_clear">Musik stoppen wenn die App aus dem Hintergrund gelöscht wird</string>
@@ -231,7 +231,7 @@
     <string name="add_all_to_library">Alle zur Bibliothek hinzufügen</string>
     <string name="similar_to">Ähnlich wie</string>
     <string name="listen_history">Hörverlauf</string>
-    <string name="not_logged_in">Nicht angemeldet</string>
+    <string name="not_logged_in">Nicht angeSargamet</string>
     <string name="remove_from_queue">Aus Warteschlange entfernen</string>
     <string name="duplicates">Duplikate</string>
     <string name="auto_skip_next_on_error">Automatisch zum nächsten Song springen, wenn ein Fehler auftritt</string>
@@ -248,7 +248,7 @@
     <string name="player_text_alignment">Ausrichtung des Player-textes</string>
     <string name="disable_screenshot">Screenshots deaktivieren</string>
     <string name="small">Klein</string>
-    <string name="login_failed">Anmeldung fehlgeschlagen</string>
+    <string name="login_failed">AnSargamung fehlgeschlagen</string>
     <string name="queue">Warteschlange</string>
     <string name="skip_duplicates">Duplikate überspringen</string>
     <string name="remove_from_playlist">Aus Playlist entfernen</string>
@@ -259,7 +259,7 @@
     <string name="your_youtube_playlists">Deine Youtube-Playlists</string>
     <string name="library_playlist_empty">Deine Playlists werden hier angezeigt</string>
     <string name="disable_screenshot_desc">Wenn diese Option aktiviert ist, sind Screenshots und die App-Ansicht in „Zuletzt gesehen“ deaktiviert.</string>
-    <string name="discord_information">Metrolist verwendet die KizzyRPC-Bibliothek, um den Status deines Discord-Kontos zu setzen. Dazu wird die Discord-Gateway-Verbindung verwendet, was als Verstoß gegen die AGB von Discord angesehen werden kann. Es sind jedoch keine Fälle bekannt, in denen Benutzerkonten aus diesem Grund gesperrt wurden. Die Verwendung erfolgt auf eigene Gefahr.\n\nMetrolist extrahiert nur dein Token, alles andere wird lokal gespeichert.</string>
+    <string name="discord_information">SARGAM verwendet die KizzyRPC-Bibliothek, um den Status deines Discord-Kontos zu setzen. Dazu wird die Discord-Gateway-Verbindung verwendet, was als Verstoß gegen die AGB von Discord angesehen werden kann. Es sind jedoch keine Fälle bekannt, in denen Benutzerkonten aus diesem Grund gesperrt wurden. Die Verwendung erfolgt auf eigene Gefahr.\n\nSARGAM extrahiert nur dein Token, alles andere wird lokal gespeichert.</string>
     <string name="squiggly">Schnörkelig</string>
     <string name="grid_cell_size">Größe der Rasterzellen</string>
     <string name="search_history">Suchverlauf</string>
@@ -274,7 +274,7 @@
     <string name="persistent_queue_desc">Wiederherstellung der letzten Warteschlange beim Starten der App</string>
     <string name="auto_load_more_desc">Automatisches Hinzufügen weiterer Songs, wenn das Ende der Warteschlange erreicht ist, sofern möglich</string>
     <string name="filter_bookmarked">Lesezeichen</string>
-    <string name="use_login_for_browse">Anmeldung zum Durchsuchen von Inhalten verwenden</string>
-    <string name="use_login_for_browse_desc">Dies kann Einfluss darauf haben, welche Inhalte du siehst und zeigt zum Beispiel nur Premium-Alben an, wenn Sie mit einem Premium-Konto angemeldet sind</string>
-    <string name="action_login">Anmelden</string>
+    <string name="use_login_for_browse">AnSargamung zum Durchsuchen von Inhalten verwenden</string>
+    <string name="use_login_for_browse_desc">Dies kann Einfluss darauf haben, welche Inhalte du siehst und zeigt zum Beispiel nur Premium-Alben an, wenn Sie mit einem Premium-Konto angeSargamet sind</string>
+    <string name="action_login">AnSargamen</string>
 </resources>

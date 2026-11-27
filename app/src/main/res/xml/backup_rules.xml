@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
+    <!-- Exclude sensitive authentication cookies, tokens, and preferences -->
+    <exclude
+        domain="sharedpref"
+        path="." />
+    <exclude
+        domain="file"
+        path="datastore" />
+
+    <!-- Exclude large media caches and temporary playback files -->
     <exclude
         domain="file"
         path="./exoplayer" />

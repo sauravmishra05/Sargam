@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="album_cover_desc">Вокладка альбома</string>
     <string name="trending">У трэндзе</string>
@@ -379,6 +379,6 @@
     <string name="enable_scrobbling">Уключыць скробблінг</string>
     <string name="lastfm_now_playing">Адпраўляць статус \"Зараз іграе\"</string>
     <string name="last_fm_send_likes">Сінхранізаваць адзнакі «Падабаецца»</string>
-    <string name="last_fm_send_likes_description">Дадаваць ці прыбіраць адзнаку «Любімае» на Last.fm, калі ставіцца ці здымаецца адзнака «Падабаецца» ў Metrolist</string>
+    <string name="last_fm_send_likes_description">Дадаваць ці прыбіраць адзнаку «Любімае» на Last.fm, калі ставіцца ці здымаецца адзнака «Падабаецца» ў SARGAM</string>
     <string name="logging_in">Выконваецца ўваход…</string>
 </resources>

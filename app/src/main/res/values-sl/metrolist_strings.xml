@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="local_history">Lokalni</string>
     <string name="remote_history">Oddaljeno</string>
@@ -176,7 +176,7 @@
     <string name="scrobble_delay_percent">Odstotek zakasnitve beleženja</string>
     <string name="scrobble_delay_minutes">Zakasnitev beleženja v minutah</string>
     <string name="last_fm_send_likes">Pošlji všečke/nevšečke</string>
-    <string name="last_fm_send_likes_description">Dodaj/odstrani pesmi med priljubljenimi na Last.fm, ko jih všečkaš/odvšečkaš v Metrolistu</string>
+    <string name="last_fm_send_likes_description">Dodaj/odstrani pesmi med priljubljenimi na Last.fm, ko jih všečkaš/odvšečkaš v SARGAMu</string>
     <string name="lyrics_romanize_chinese">Romaniziraj kitajska besedila</string>
     <string name="edit_playlist_cover_note">Opomba: Vaš račun mora biti povezan s telefonsko številko in preverjen na YouTube Music, da lahko spremenite naslovnico seznama predvajanja.</string>
     <string name="settings_section_player_content">Predvajalnik in vsebina</string>
@@ -264,7 +264,7 @@
     <string name="wrapped_total_artists_subtitle">različnih izvajalcev</string>
     <string name="casting_to">Predvajanje na %s</string>
     <string name="progress_percent">Napredek: %s%%</string>
-    <string name="listening_to_metrolist">Poslušaš Metrolist</string>
+    <string name="listening_to_metrolist">Poslušaš SARGAM</string>
     <string name="more_options">Več opcij</string>
     <string name="loudness_level">Nivo glasnosti</string>
     <string name="loudness_level_loud">Glasno</string>

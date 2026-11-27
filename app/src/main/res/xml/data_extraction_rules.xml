@@ -1,10 +1,15 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
--->
+<?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
     <cloud-backup>
+        <!-- Exclude sensitive authentication cookies, tokens, and preferences -->
+        <exclude
+            domain="sharedpref"
+            path="." />
+        <exclude
+            domain="file"
+            path="datastore" />
+
+        <!-- Exclude large media caches and temporary playback files -->
         <exclude
             domain="file"
             path="./exoplayer" />
@@ -16,6 +21,15 @@
             path="exoplayer_internal.db" />
     </cloud-backup>
     <device-transfer>
+        <!-- Exclude sensitive authentication cookies, tokens, and preferences -->
+        <exclude
+            domain="sharedpref"
+            path="." />
+        <exclude
+            domain="file"
+            path="datastore" />
+
+        <!-- Exclude large media caches and temporary playback files -->
         <exclude
             domain="file"
             path="./exoplayer" />
