@@ -687,6 +687,7 @@
     <string name="user_blocked_by_host">Blocked by host</string>
 
     <!-- AI Lyrics Translation -->
+    <string name="ai_settings">AI Settings</string>
     <string name="ai_lyrics_translation">AI lyrics translation</string>
     <string name="ai_translating_lyrics">Translating lyrics…</string>
     <string name="ai_lyrics_translated">Lyrics translated</string>
@@ -1023,4 +1024,114 @@
     <string name="stream_source_web_creator_desc">Creator web client.</string>
     <string name="stream_source_android_creator">ANDROID_CREATOR</string>
     <string name="stream_source_android_creator_desc">Android creator client. Off by default; needs DroidGuard.</string>
+
+    <!-- Network & Update strings -->
+    <string name="offline_banner_text">No internet connection</string>
+    <string name="download_failed">Download failed</string>
+    <string name="update_dialog_title">Update Available</string>
+    <string name="current_version_label">Current Version</string>
+    <string name="new_version_label">New Version</string>
+    <string name="changelog_label">Changelog</string>
+    <string name="install_permission_title">Permission Required</string>
+    <string name="install_permission_msg">Allow Sargam to install app updates.</string>
+    <string name="grant_permission">Grant Permission</string>
+    <string name="downloading_update">Downloading update…</string>
+    <string name="update_now">Update Now</string>
+    <string name="later">Later</string>
+    <string name="no_internet_connection">No internet connection</string>
+    <string name="check_connection_retry">Please check your network and try again.</string>
+    <string name="something_went_wrong">Something went wrong</string>
+    <string name="connection_timed_out">Connection timed out</string>
+    <string name="service_unavailable">Service unavailable</string>
+    <string name="unable_to_process_response">Unable to process response</string>
+
+    <!-- Sargam Audio Engine -->
+    <string name="sargam_audio_engine">Sargam Audio Engine</string>
+    <string name="sargam_audio_engine_desc">Premium sound processing with acoustic sound modes and 10-band equalizer</string>
+    <string name="sargam_audio_engine_enable">Enable Sargam Audio Engine</string>
+    <string name="sound_modes">Sound Modes</string>
+    <string name="sound_modes_desc">Select a tuned acoustic preset for your music genre</string>
+    <string name="stereo_width">Stereo Width / Spatial</string>
+    <string name="stereo_width_desc">Expand soundstage width for headphone listening</string>
+    <string name="ten_band_equalizer">10-Band Equalizer</string>
+    <string name="hardware_dsp_active">Hardware Audio FX Active</string>
+    <string name="software_dsp_active">Software High-Precision DSP Active</string>
+    <string name="sound_mode_sargam_immersive">Sargam Immersive</string>
+    <string name="sound_mode_deep_bass">Deep Bass</string>
+    <string name="sound_mode_crystal_vocals">Crystal Vocals</string>
+    <string name="sound_mode_studio_sound">Studio Sound</string>
+    <string name="sound_mode_rock">Rock</string>
+    <string name="sound_mode_edm">EDM</string>
+    <string name="sound_mode_bollywood">Bollywood</string>
+    <string name="sound_mode_bhojpuri">Bhojpuri</string>
+    <string name="sound_mode_punjabi">Punjabi</string>
+    <string name="sound_mode_haryanvi">Haryanvi</string>
+    <string name="sound_mode_custom">Custom</string>
+
+    <!-- Phone Login & Cloud Sync -->
+    <string name="phone_login_title">Phone Number Login</string>
+    <string name="phone_login_headline">Sign in with Phone</string>
+    <string name="phone_login_subtitle">Enter your phone number to receive an OTP and sync your library across devices</string>
+    <string name="country_code">Code</string>
+    <string name="phone_number_label">Phone Number</string>
+    <string name="send_otp">Send OTP</string>
+    <string name="otp_sent_to">OTP sent to %s</string>
+    <string name="enter_otp">Enter 6-digit OTP</string>
+    <string name="verify_otp">Verify OTP &amp; Login</string>
+    <string name="change_phone_number">Change phone number</string>
+    <string name="phone_login_desc">Sign in with your phone number to sync songs, playlists, and favorites across devices</string>
+    <string name="sync_now">Sync Now</string>
+    <string name="syncing">Syncing…</string>
+    <string name="synced_success">Sync complete</string>
+    <string name="sign_in_with_google">Sign in with Google</string>
+
+    <!-- Greeting & User Profile -->
+    <string name="good_morning">Good morning</string>
+    <string name="good_afternoon">Good afternoon</string>
+    <string name="good_evening">Good evening</string>
+    <string name="good_night">Good night</string>
+    <string name="welcome_to_sargam">Welcome to Sargam</string>
+    <string name="enter_name_prompt">What should we call you?</string>
+    <string name="enter_your_name">Enter your name</string>
+    <string name="save_name">Save Name</string>
+    <string name="edit_name">Edit Name</string>
+    <string name="name_hint">Your name</string>
+
+    <!-- Advanced Playback Features -->
+    <string name="sleep_timer_off">Off</string>
+    <string name="sleep_timer_finish_song">Finish current song before stopping</string>
+    <string name="sleep_timer_set">Sleep timer set for %1$d minutes</string>
+    <string name="sleep_timer_cancelled">Sleep timer cancelled</string>
+    <string name="auto_headphone_preset">Auto Headphone Preset</string>
+    <string name="auto_headphone_preset_desc">Automatically switch Sargam Sound Mode when headphones connect</string>
+    <string name="smart_prefetch">Smart Stream Pre-fetching</string>
+    <string name="smart_prefetch_desc">Pre-resolve and buffer next song stream for instant, zero-delay transitions</string>
+
+    <!-- Volume Booster & Visualizer -->
+    <string name="volume_booster">Smart Volume Booster</string>
+    <string name="volume_booster_desc">Safely boost audio gain with automatic anti-clipping dynamics control</string>
+    <string name="audio_visualizer">Live Spectrum Visualizer</string>
+    <string name="audio_visualizer_desc">Show real-time frequency visualizer bars on player screen</string>
+    <string name="lyrics_translation">Lyrics Translation &amp; Transliteration</string>
+    <string name="lyrics_translation_desc">Show translated &amp; transliterated lines for song lyrics</string>
+    <string name="mood_radio_workout">Workout Energy 🏋️‍♂️</string>
+    <string name="mood_radio_chill">Chill &amp; Rainy Vibes ☕</string>
+    <string name="mood_radio_focus">Focus &amp; Study 📚</string>
+    <string name="mood_radio_drive">Late Night Long Drive 🚗</string>
+    <string name="mood_radio_party">Party Bangers 🎉</string>
+    <string name="local_folders">Local Folders</string>
+
+    <!-- Car Mode, Lyrics Share Card, AutoEQ -->
+    <string name="car_drive_mode">Car Drive Mode</string>
+    <string name="car_drive_mode_desc">High-contrast, large-touch driving interface with voice controls</string>
+    <string name="share_lyrics_card">Share Lyric Card</string>
+    <string name="auto_eq_headphone">AutoEQ Headphone Profile</string>
+    <string name="auto_eq_headphone_desc">Select from 4,000+ headphone models for acoustic target tuning</string>
+    <string name="search_headphone_model">Search Headphone Model (e.g. Sony, Boat, AirPods, JBL)</string>
+
+    <!-- Laptop / Desktop Shortcuts & Controls -->
+    <string name="media_controls">Media Controls</string>
+    <string name="seek_forward">Seek Forward</string>
+    <string name="seek_backward">Seek Backward</string>
+    <string name="repeat">Repeat</string>
 </resources>

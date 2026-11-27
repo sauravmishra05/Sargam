@@ -67,8 +67,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import com.metrolist.music.utils.AudioQualityCategory
+import com.metrolist.music.utils.AudioQualityHelper
+import com.metrolist.music.utils.SourceAudioMetadata
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -93,6 +99,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.graphicsLayer
+import com.metrolist.music.ui.theme.SargamEmeraldAccent
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
@@ -112,6 +120,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import com.metrolist.music.ui.theme.pressScaleEffect
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
@@ -235,7 +244,7 @@ fun BottomSheetPlayer(
 
     val playerBackground by rememberEnumPreference(
         key = PlayerBackgroundStyleKey,
-        defaultValue = PlayerBackgroundStyle.DEFAULT,
+        defaultValue = PlayerBackgroundStyle.BLUR,
     )
     val playerButtonsStyle by rememberEnumPreference(
         key = PlayerButtonsStyleKey,
@@ -243,7 +252,7 @@ fun BottomSheetPlayer(
     )
 
     val isSystemInDarkTheme = isSystemInDarkTheme()
-    val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
+    val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.ON)
     val useDarkTheme =
         remember(darkTheme, isSystemInDarkTheme) {
             if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
@@ -855,7 +864,7 @@ fun BottomSheetPlayer(
                                             ImageRequest
                                                 .Builder(context)
                                                 .data(thumbnailUrl)
-                                                .size(40, 40)
+                                                .size(100, 100)
                                                 .allowHardware(false)
                                                 .build(),
                                         contentDescription = null,
@@ -863,7 +872,7 @@ fun BottomSheetPlayer(
                                         modifier =
                                             Modifier
                                                 .fillMaxSize()
-                                                .blur(if (useDarkTheme) 60.dp else 40.dp),
+                                                .blur(if (useDarkTheme) 150.dp else 100.dp),
                                     )
                                     Box(
                                         modifier =
@@ -935,6 +944,18 @@ fun BottomSheetPlayer(
         },
     ) {
         val controlsContent: @Composable ColumnScope.(MediaMetadata) -> Unit = { mediaMetadata ->
+            val currentFormat by playerConnection.currentFormat.collectAsState()
+            val qualityInfo = remember(currentFormat, mediaMetadata.id) {
+                AudioQualityHelper.classifySourceAudioForTrack(
+                    trackMediaId = mediaMetadata.id,
+                    formatMimeType = currentFormat?.mimeType,
+                    formatCodec = currentFormat?.codecs,
+                    formatBitrate = currentFormat?.bitrate,
+                    formatSampleRate = currentFormat?.sampleRate,
+                    formatEntityId = currentFormat?.id
+                )
+            }
+
             val playPauseRoundness by animateDpAsState(
                 targetValue = if (isPlaying) 24.dp else 36.dp,
                 animationSpec = tween(durationMillis = 90, easing = LinearEasing),
@@ -1118,6 +1139,33 @@ fun BottomSheetPlayer(
                             }
                         }
                     }
+
+                    if (qualityInfo.category != AudioQualityCategory.UNKNOWN) {
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = when (qualityInfo.category) {
+                                AudioQualityCategory.HI_RES_LOSSLESS -> Color(0xFFFFB703).copy(alpha = 0.25f)
+                                AudioQualityCategory.LOSSLESS -> SargamEmeraldAccent.copy(alpha = 0.2f)
+                                AudioQualityCategory.HIGH_QUALITY -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                                else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            },
+                            contentColor = when (qualityInfo.category) {
+                                AudioQualityCategory.HI_RES_LOSSLESS -> Color(0xFFFFB703)
+                                AudioQualityCategory.LOSSLESS -> SargamEmeraldAccent
+                                AudioQualityCategory.HIGH_QUALITY -> MaterialTheme.colorScheme.onPrimaryContainer
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            modifier = Modifier.padding(top = 4.dp)
+                        ) {
+                            Text(
+                                text = qualityInfo.summaryBadgeText,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 10.sp,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))
@@ -1233,6 +1281,11 @@ fun BottomSheetPlayer(
                                 // For episodes, show saved state (inLibrary); for songs, show liked state
                                 val isEpisode = currentSong?.song?.isEpisode == true
                                 val isFavorite = if (isEpisode) currentSong?.song?.inLibrary != null else currentSong?.song?.liked == true
+                                val heartScale by animateFloatAsState(
+                                    targetValue = if (isFavorite) 1.22f else 1.0f,
+                                    animationSpec = spring(dampingRatio = 0.5f, stiffness = 350f),
+                                    label = "heartScale"
+                                )
                                 FilledIconButton(
                                     onClick = playerConnection::toggleLike,
                                     shape = favShape,
@@ -1241,7 +1294,9 @@ fun BottomSheetPlayer(
                                             containerColor = textButtonColor,
                                             contentColor = iconButtonColor,
                                         ),
-                                    modifier = Modifier.size(42.dp),
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .pressScaleEffect(targetScale = 0.92f),
                                 ) {
                                     Icon(
                                         painter =
@@ -1253,7 +1308,13 @@ fun BottomSheetPlayer(
                                                 },
                                             ),
                                         contentDescription = null,
-                                        modifier = Modifier.size(24.dp),
+                                        tint = if (isFavorite) SargamEmeraldAccent else iconButtonColor,
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .graphicsLayer {
+                                                scaleX = heartScale
+                                                scaleY = heartScale
+                                            },
                                     )
                                 }
                             }
@@ -1392,6 +1453,14 @@ fun BottomSheetPlayer(
                         },
                         enabled = !isListenTogetherGuest,
                         colors = PlayerSliderColors.getSliderColors(textButtonColor, playerBackground, useDarkTheme),
+                        thumb = { Spacer(modifier = Modifier.size(0.dp)) },
+                        track = { sliderState ->
+                            PlayerSliderTrack(
+                                sliderState = sliderState,
+                                colors = PlayerSliderColors.getSliderColors(textButtonColor, playerBackground, useDarkTheme),
+                                isPlaying = effectiveIsPlaying,
+                            )
+                        },
                         modifier = Modifier.padding(horizontal = PlayerHorizontalPadding),
                     )
                 }
@@ -1475,6 +1544,7 @@ fun BottomSheetPlayer(
                             PlayerSliderTrack(
                                 sliderState = sliderState,
                                 colors = PlayerSliderColors.getSliderColors(textButtonColor, playerBackground, useDarkTheme),
+                                isPlaying = effectiveIsPlaying,
                             )
                         },
                         modifier = Modifier.padding(horizontal = PlayerHorizontalPadding),
@@ -1598,7 +1668,8 @@ fun BottomSheetPlayer(
                                 modifier =
                                     Modifier
                                         .height(68.dp)
-                                        .weight(backButtonWeight),
+                                        .weight(backButtonWeight)
+                                        .pressScaleEffect(targetScale = 0.94f),
                             ) {
                                 Icon(
                                     painter = painterResource(R.drawable.skip_previous),
@@ -1639,7 +1710,8 @@ fun BottomSheetPlayer(
                                     Modifier
                                         .height(68.dp)
                                         .weight(playPauseWeight)
-                                        .focusRequester(focusRequester),
+                                        .focusRequester(focusRequester)
+                                        .pressScaleEffect(targetScale = 0.94f),
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
@@ -1690,7 +1762,8 @@ fun BottomSheetPlayer(
                                 modifier =
                                     Modifier
                                         .height(68.dp)
-                                        .weight(nextButtonWeight),
+                                        .weight(nextButtonWeight)
+                                        .pressScaleEffect(targetScale = 0.94f),
                             ) {
                                 Icon(
                                     painter = painterResource(R.drawable.skip_next),

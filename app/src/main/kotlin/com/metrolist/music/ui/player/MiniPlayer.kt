@@ -57,6 +57,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -107,6 +109,7 @@ import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
+import com.metrolist.music.ui.theme.liquidGlassPill
 import com.metrolist.music.ui.component.Icon as MIcon
 import androidx.compose.ui.draw.blur
 import com.metrolist.music.constants.MiniPlayerBackgroundStyle
@@ -191,7 +194,7 @@ private fun NewMiniPlayer(
     val context = LocalContext.current
     var gradientColors by remember { mutableStateOf<List<Color>>(emptyList()) }
     val isSystemInDarkTheme = isSystemInDarkTheme()
-    val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
+    val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.ON)
     val useDarkTheme =
         remember(darkTheme, isSystemInDarkTheme) {
             if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
@@ -288,12 +291,12 @@ private fun NewMiniPlayer(
         }
     }
 
-    // Memoize colors
+    // Memoize colors with slightly reduced transparency for high readability
     val backgroundColor = when (miniPlayerBackground) {
-        MiniPlayerBackgroundStyle.DEFAULT    -> MaterialTheme.colorScheme.surfaceContainer
-        MiniPlayerBackgroundStyle.TRANSPARENT -> Color.Black.copy(alpha = 0.25f)
-        MiniPlayerBackgroundStyle.BLUR       -> MaterialTheme.colorScheme.surfaceContainer
-        MiniPlayerBackgroundStyle.GRADIENT   -> MaterialTheme.colorScheme.surfaceContainer
+        MiniPlayerBackgroundStyle.DEFAULT    -> if (useDarkTheme) Color(0xDC141A22) else Color(0xECFFFFFF)
+        MiniPlayerBackgroundStyle.TRANSPARENT -> if (useDarkTheme) Color(0xC810151D) else Color(0xE0FFFFFF)
+        MiniPlayerBackgroundStyle.BLUR       -> if (useDarkTheme) Color(0xDC141A22) else Color(0xECFFFFFF)
+        MiniPlayerBackgroundStyle.GRADIENT   -> if (useDarkTheme) Color(0xDC141A22) else Color(0xECFFFFFF)
         MiniPlayerBackgroundStyle.PURE_BLACK -> Color.Black
     }
     val forceLightColors = !useDarkTheme && (miniPlayerBackground == MiniPlayerBackgroundStyle.PURE_BLACK ||
@@ -382,9 +385,7 @@ private fun NewMiniPlayer(
                     .then(if (isTabletLandscape) Modifier.width(500.dp).align(Alignment.Center) else Modifier.fillMaxWidth())
                     .height(64.dp)
                     .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
-                    .clip(RoundedCornerShape(32.dp))
-                    .background(color = backgroundColor)
-                    .border(1.dp, outlineColor.copy(alpha = 0.3f), RoundedCornerShape(32.dp))
+                    .liquidGlassPill(backgroundColor = backgroundColor, isDark = useDarkTheme)
                     .clickable(
                         interactionSource = interactionSource,
                         indication = LocalIndication.current,
@@ -880,6 +881,7 @@ private fun LegacyMiniPlayer(
             )
 
             IconButton(
+                modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
                 enabled = canSkipNext && !isListenTogetherGuest,
                 onClick = if (isListenTogetherGuest) ({}) else ({ playerConnection.seekToNext() }),
             ) {
@@ -927,6 +929,7 @@ private fun LegacyPlayPauseButton(
     val isMuted by playerConnection.isMuted.collectAsStateWithLifecycle()
 
     IconButton(
+        modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
         onClick = {
             if (isListenTogetherGuest) {
                 playerConnection.toggleMute()
@@ -1167,7 +1170,9 @@ private fun FavoriteButton(
                 ).background(
                     color = if (isLiked) errorColor.copy(alpha = 0.1f) else Color.Transparent,
                     shape = CircleShape,
-                ).clickable { playerConnection.service.toggleLike() },
+                )
+                .pointerHoverIcon(PointerIcon.Hand)
+                .clickable { playerConnection.service.toggleLike() },
     ) {
         Icon(
             painter = painterResource(if (isLiked) R.drawable.favorite else R.drawable.favorite_border),

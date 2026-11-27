@@ -7,7 +7,6 @@ package com.metrolist.music
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.ForegroundServiceStartNotAllowedException
 import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Intent
@@ -16,29 +15,39 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
+import android.os.PowerManager
+import android.provider.Settings
+import android.view.KeyboardShortcutGroup
+import android.view.KeyboardShortcutInfo
+import android.view.KeyEvent
+import android.view.Menu
 import android.view.View
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.add
@@ -104,7 +113,6 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -140,6 +148,9 @@ import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.WatchEndpoint
 import com.metrolist.music.constants.AppBarHeight
+import com.metrolist.music.ui.component.OfflineBanner
+import com.metrolist.music.ui.component.UpdateDialog
+import com.metrolist.music.utils.NetworkConnectivityObserver
 import com.metrolist.music.constants.AppLanguageKey
 import com.metrolist.music.constants.CheckForUpdatesKey
 import com.metrolist.music.constants.DarkModeKey
@@ -183,6 +194,7 @@ import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.component.AccountSettingsDialog
 import com.metrolist.music.ui.component.AppNavigationBar
 import com.metrolist.music.ui.component.AppNavigationRail
+import com.metrolist.music.ui.component.SplashScreenAnimation
 import com.metrolist.music.ui.component.BottomSheetMenu
 import com.metrolist.music.ui.component.BottomSheetPage
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
@@ -199,6 +211,7 @@ import com.metrolist.music.ui.screens.settings.NavigationTab
 import com.metrolist.music.ui.theme.ColorSaver
 import com.metrolist.music.ui.theme.DefaultThemeColor
 import com.metrolist.music.ui.theme.MetrolistTheme
+import com.metrolist.music.ui.theme.LuminousAmbientBackground
 import com.metrolist.music.ui.theme.extractThemeColor
 import com.metrolist.music.ui.utils.appBarScrollBehavior
 import com.metrolist.music.ui.utils.resetHeightOffset
@@ -218,7 +231,6 @@ import com.metrolist.music.widget.PlaylistWidgetReceiver
 import com.valentinilk.shimmer.LocalShimmerTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -240,6 +252,7 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_AUTO_START_RECOGNITION = "auto_start_recognition"
         const val EXTRA_WIDGET_TARGET_TYPE = "widget_target_type"
         const val EXTRA_WIDGET_TARGET_ID = "widget_target_id"
+        const val ACTION_TRIGGER_VERIFIED_UPDATE = "com.metrolist.music.action.TRIGGER_VERIFIED_UPDATE"
     }
 
     @Inject
@@ -304,8 +317,67 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private var hasRequestedAudioPermission = false
+
+    fun requestAudioPermissionIfNeeded() {
+        if (hasRequestedAudioPermission) return
+        hasRequestedAudioPermission = true
+
+        val audioPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Manifest.permission.READ_MEDIA_AUDIO
+        } else {
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        }
+
+        if (ContextCompat.checkSelfPermission(this, audioPermission) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(audioPermission), 1001)
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 1001) {
+            val isGranted = grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED
+            if (isGranted) {
+                Timber.tag("MainActivity").d("Audio storage permission granted")
+            } else {
+                Timber.tag("MainActivity").d("Audio storage permission denied")
+            }
+        }
+    }
+
+    private var hasPromptedBatteryOptimization = false
+
+    fun requestIgnoreBatteryOptimizationIfNeeded() {
+        if (hasPromptedBatteryOptimization) return
+        hasPromptedBatteryOptimization = true
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val powerManager = getSystemService(POWER_SERVICE) as? PowerManager
+            if (powerManager != null && !powerManager.isIgnoringBatteryOptimizations(packageName)) {
+                try {
+                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                        data = android.net.Uri.parse("package:$packageName")
+                    }
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    try {
+                        val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                        startActivity(intent)
+                    } catch (e2: Exception) {
+                        Timber.w(e2, "Failed to open battery optimization settings")
+                    }
+                }
+            }
+        }
+    }
+
     override fun onStart() {
         super.onStart()
+        requestIgnoreBatteryOptimizationIfNeeded()
         // Request notification permission on Android 13+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -325,9 +397,7 @@ class MainActivity : ComponentActivity() {
                 } else {
                     startService(serviceIntent)
                 }
-            } catch (e: ForegroundServiceStartNotAllowedException) {
-                Timber.w(e, "Cannot start foreground service from background")
-            } catch (e: IllegalStateException) {
+            } catch (e: Exception) {
                 Timber.w(e, "Failed to start foreground service")
             }
         }
@@ -376,8 +446,18 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun handleVerifiedUpdateIntent(intent: Intent?) {
+        if (intent?.action == ACTION_TRIGGER_VERIFIED_UPDATE) {
+            intent.action = null
+            lifecycleScope.launch {
+                Updater.downloadAndInstallUpdate(this@MainActivity)
+            }
+        }
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        handleVerifiedUpdateIntent(intent)
         if (::navController.isInitialized) {
             handleWidgetTargetIntent(intent, navController)
             handleDeepLinkIntent(intent, navController)
@@ -386,15 +466,44 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun enableHighRefreshRate() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                val displayObj = display
+                val modes = displayObj?.supportedModes
+                val maxMode = modes?.maxByOrNull { it.refreshRate }
+                if (maxMode != null) {
+                    val lp = window.attributes
+                    lp.preferredDisplayModeId = maxMode.modeId
+                    window.attributes = lp
+                    Timber.tag("MainActivity").d("Set preferred display mode to ${maxMode.refreshRate}Hz (mode ${maxMode.modeId})")
+                }
+            } catch (e: Exception) {
+                Timber.tag("MainActivity").w(e, "Failed to enable high refresh rate mode")
+            }
+        }
+    }
+
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableHighRefreshRate()
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_LTR
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         // Initialize Listen Together manager
         listenTogetherManager.initialize()
+
+        try {
+            val crashFile = java.io.File(filesDir, "latest_crash.txt")
+            if (crashFile.exists()) {
+                val crashText = crashFile.readText()
+                Timber.tag("PREVIOUS_CRASH").e("Previous Crash Stacktrace:\n$crashText")
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to read previous crash log")
+        }
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             val locale =
@@ -481,6 +590,12 @@ class MainActivity : ComponentActivity() {
         downloadUtil: DownloadUtil,
         syncUtils: SyncUtils,
     ) {
+        val networkConnectivityObserver = remember { NetworkConnectivityObserver(this@MainActivity) }
+        val isNetworkConnected by networkConnectivityObserver.isNetworkConnected.collectAsStateWithLifecycle()
+        var availableUpdateRelease by remember { mutableStateOf<ReleaseInfo?>(null) }
+        var updateDialogDismissed by rememberSaveable { mutableStateOf(false) }
+        var showSplashScreen by rememberSaveable { mutableStateOf(false) }
+
         val checkForUpdates by rememberPreference(CheckForUpdatesKey, defaultValue = true)
         var kmpRelease by remember { mutableStateOf<ReleaseInfo?>(null) }
         var kmpUpgradeDismissed by rememberSaveable { mutableStateOf(false) }
@@ -496,31 +611,36 @@ class MainActivity : ComponentActivity() {
                         Updater.checkForUpdate().onSuccess { (releaseInfo, hasUpdate) ->
                             if (releaseInfo != null) {
                                 onLatestVersionNameChange(releaseInfo.versionName)
-                                if (hasUpdate && notifEnabled) {
-                                    val downloadUrl = Updater.getDownloadUrlForCurrentVariant(releaseInfo)
-                                    if (downloadUrl != null) {
-                                        val intent = Intent(Intent.ACTION_VIEW, downloadUrl.toUri())
+                                if (hasUpdate) {
+                                    availableUpdateRelease = releaseInfo
+                                    if (notifEnabled) {
+                                        val asset = Updater.getReleaseAssetForCurrentVariant(releaseInfo)
+                                        if (asset != null) {
+                                            val intent = Intent(this@MainActivity, MainActivity::class.java).apply {
+                                                action = ACTION_TRIGGER_VERIFIED_UPDATE
+                                            }
 
-                                        val flags =
-                                            PendingIntent.FLAG_UPDATE_CURRENT or
-                                                (PendingIntent.FLAG_IMMUTABLE)
-                                        val pending = PendingIntent.getActivity(this@MainActivity, 1001, intent, flags)
+                                            val flags =
+                                                PendingIntent.FLAG_UPDATE_CURRENT or
+                                                    (PendingIntent.FLAG_IMMUTABLE)
+                                            val pending = PendingIntent.getActivity(this@MainActivity, 1001, intent, flags)
 
-                                        val notif =
-                                            NotificationCompat
-                                                .Builder(this@MainActivity, "updates")
-                                                .setSmallIcon(R.drawable.update)
-                                                .setContentTitle(getString(R.string.update_available_title))
-                                                .setContentText(releaseInfo.versionName)
-                                                .setContentIntent(pending)
-                                                .setAutoCancel(true)
-                                                .build()
+                                            val notif =
+                                                NotificationCompat
+                                                    .Builder(this@MainActivity, "updates")
+                                                    .setSmallIcon(R.drawable.update)
+                                                    .setContentTitle(getString(R.string.update_available_title))
+                                                    .setContentText(releaseInfo.versionName)
+                                                    .setContentIntent(pending)
+                                                    .setAutoCancel(true)
+                                                    .build()
 
-                                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-                                            ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.POST_NOTIFICATIONS) ==
-                                            PackageManager.PERMISSION_GRANTED
-                                        ) {
-                                            NotificationManagerCompat.from(this@MainActivity).notify(1001, notif)
+                                            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                                                ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.POST_NOTIFICATIONS) ==
+                                                PackageManager.PERMISSION_GRANTED
+                                            ) {
+                                                NotificationManagerCompat.from(this@MainActivity).notify(1001, notif)
+                                            }
                                         }
                                     }
                                 }
@@ -545,16 +665,26 @@ class MainActivity : ComponentActivity() {
             val window = this@MainActivity.window
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 val layoutParams = window.attributes
+                val modes = window.windowManager.defaultDisplay.supportedModes
                 if (enableHighRefreshRate) {
-                    layoutParams.preferredDisplayModeId = 0
+                    val maxMode = modes.maxByOrNull { it.refreshRate }
+                    if (maxMode != null) {
+                        layoutParams.preferredDisplayModeId = maxMode.modeId
+                        layoutParams.preferredRefreshRate = maxMode.refreshRate
+                    } else {
+                        layoutParams.preferredDisplayModeId = 0
+                        layoutParams.preferredRefreshRate = 0f
+                    }
                 } else {
-                    val modes = window.windowManager.defaultDisplay.supportedModes
                     val mode60 =
                         modes.firstOrNull { kotlin.math.abs(it.refreshRate - 60f) < 1f }
                             ?: modes.minByOrNull { kotlin.math.abs(it.refreshRate - 60f) }
 
                     if (mode60 != null) {
                         layoutParams.preferredDisplayModeId = mode60.modeId
+                        layoutParams.preferredRefreshRate = mode60.refreshRate
+                    } else {
+                        layoutParams.preferredRefreshRate = 60f
                     }
                 }
                 window.attributes = layoutParams
@@ -569,7 +699,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
+        val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.ON)
         val isSystemInDarkTheme = isSystemInDarkTheme()
         val useDarkTheme =
             remember(darkTheme, isSystemInDarkTheme) {
@@ -655,7 +785,11 @@ class MainActivity : ComponentActivity() {
             pureBlack = pureBlack,
             themeColor = themeColor,
         ) {
-            val currentDensity = LocalDensity.current
+            LuminousAmbientBackground(
+                ambientColor = themeColor,
+                isDark = useDarkTheme
+            ) {
+                val currentDensity = LocalDensity.current
             val windowInfo = LocalWindowInfo.current
             val containerSize = windowInfo.containerDpSize
             val smallestDimensionDp = minOf(containerSize.width, containerSize.height)
@@ -679,17 +813,7 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
-            var isSplashVisible by rememberSaveable { mutableStateOf(true) }
-
-            LaunchedEffect(Unit) {
-                delay(1800)
-                isSplashVisible = false
-            }
-
-            if (isSplashVisible) {
-                SargamSplashScreen()
-            } else {
-                CompositionLocalProvider(LocalDensity provides scaledDensity) {
+            CompositionLocalProvider(LocalDensity provides scaledDensity) {
             BoxWithConstraints(
                 modifier =
                     Modifier
@@ -853,7 +977,7 @@ class MainActivity : ComponentActivity() {
                         if (!playerBottomSheetState.isDismissed) bottom += MiniPlayerHeight
                         windowsInsets
                             .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
-                            .add(WindowInsets(top = AppBarHeight, bottom = bottom))
+                            .add(WindowInsets(top = AppBarHeight, bottom = bottom + 32.dp))
                     }
                 appBarScrollBehavior(
                     canScroll = {
@@ -1022,7 +1146,117 @@ class MainActivity : ComponentActivity() {
                     LocalSyncUtils provides syncUtils,
                     LocalListenTogetherManager provides listenTogetherManager,
                     LocalChangelogState provides showChangelog,
+                    LocalNetworkConnectivity provides networkConnectivityObserver,
                 ) {
+                    val rootFocusRequester = remember { FocusRequester() }
+                    val rootCoroutineScope = rememberCoroutineScope()
+                    LaunchedEffect(Unit) {
+                        runCatching { rootFocusRequester.requestFocus() }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .focusRequester(rootFocusRequester)
+                            .focusable()
+                            .onKeyEvent { keyEvent ->
+                                if (keyEvent.type == KeyEventType.KeyDown && keyEvent.nativeKeyEvent.repeatCount == 0) {
+                                    val isCtrl = keyEvent.isCtrlPressed
+                                    when {
+                                        isCtrl && keyEvent.key == Key.F -> {
+                                            navController.navigate(Screens.Search.route)
+                                            true
+                                        }
+                                        isCtrl && keyEvent.key == Key.One -> {
+                                            navController.navigate(Screens.Home.route)
+                                            true
+                                        }
+                                        isCtrl && keyEvent.key == Key.Three -> {
+                                            navController.navigate(Screens.Library.route)
+                                            true
+                                        }
+                                        isCtrl && keyEvent.key == Key.Five -> {
+                                            navController.navigate("settings")
+                                            true
+                                        }
+                                        keyEvent.key == Key.Escape -> {
+                                            if (playerBottomSheetState.isExpanded) {
+                                                rootCoroutineScope.launch { playerBottomSheetState.collapseSoft() }
+                                                true
+                                            } else if (navController.previousBackStackEntry != null) {
+                                                navController.popBackStack()
+                                                true
+                                            } else false
+                                        }
+                                        else -> {
+                                            activePlayerConnection?.let { conn ->
+                                                when {
+                                                    keyEvent.key == Key.Spacebar -> {
+                                                        conn.togglePlayPause()
+                                                        true
+                                                    }
+                                                    isCtrl && keyEvent.key == Key.DirectionRight -> {
+                                                        conn.seekToNext()
+                                                        true
+                                                    }
+                                                    isCtrl && keyEvent.key == Key.DirectionLeft -> {
+                                                        conn.seekToPrevious()
+                                                        true
+                                                    }
+                                                    !isCtrl && keyEvent.key == Key.DirectionRight -> {
+                                                        val pos = conn.player.currentPosition
+                                                        val dur = conn.player.duration
+                                                        conn.seekTo((pos + 5000L).coerceAtMost(if (dur > 0) dur else Long.MAX_VALUE))
+                                                        true
+                                                    }
+                                                    !isCtrl && keyEvent.key == Key.DirectionLeft -> {
+                                                        val pos = conn.player.currentPosition
+                                                        conn.seekTo((pos - 5000L).coerceAtLeast(0L))
+                                                        true
+                                                    }
+                                                    keyEvent.key == Key.DirectionUp -> {
+                                                        conn.player.volume = (conn.player.volume + 0.1f).coerceIn(0f, 1f)
+                                                        true
+                                                    }
+                                                    keyEvent.key == Key.DirectionDown -> {
+                                                        conn.player.volume = (conn.player.volume - 0.1f).coerceIn(0f, 1f)
+                                                        true
+                                                    }
+                                                    keyEvent.key == Key.M && !isCtrl -> {
+                                                        conn.toggleMute()
+                                                        true
+                                                    }
+                                                    keyEvent.key == Key.L && !isCtrl -> {
+                                                        conn.toggleLike()
+                                                        true
+                                                    }
+                                                    keyEvent.key == Key.S && !isCtrl -> {
+                                                        conn.player.shuffleModeEnabled = !conn.player.shuffleModeEnabled
+                                                        true
+                                                    }
+                                                    keyEvent.key == Key.R && !isCtrl -> {
+                                                        conn.player.repeatMode = when (conn.player.repeatMode) {
+                                                            androidx.media3.common.Player.REPEAT_MODE_OFF -> androidx.media3.common.Player.REPEAT_MODE_ALL
+                                                            androidx.media3.common.Player.REPEAT_MODE_ALL -> androidx.media3.common.Player.REPEAT_MODE_ONE
+                                                            else -> androidx.media3.common.Player.REPEAT_MODE_OFF
+                                                        }
+                                                        true
+                                                    }
+                                                    else -> false
+                                                }
+                                            } ?: false
+                                        }
+                                    }
+                                } else false
+                            }
+                    ) {
+                    if (availableUpdateRelease != null && !updateDialogDismissed) {
+                        UpdateDialog(
+                            releaseInfo = availableUpdateRelease!!,
+                            onDismiss = { updateDialogDismissed = true }
+                        )
+                    }
+
                     if (showChangelog.value) {
                         ChangelogScreen(onDismiss = { showChangelog.value = false })
                     }
@@ -1030,12 +1264,14 @@ class MainActivity : ComponentActivity() {
                     Scaffold(
                         snackbarHost = { SnackbarHost(snackbarHostState) },
                         topBar = {
-                            AnimatedVisibility(
-                                visible = shouldShowTopBar,
-                                enter = fadeIn(animationSpec = tween(durationMillis = 300)),
-                                exit = fadeOut(animationSpec = tween(durationMillis = 200)),
-                            ) {
-                                Row {
+                            Column {
+                                OfflineBanner(isOffline = !isNetworkConnected)
+                                AnimatedVisibility(
+                                    visible = shouldShowTopBar,
+                                    enter = fadeIn(animationSpec = tween(durationMillis = 300)),
+                                    exit = fadeOut(animationSpec = tween(durationMillis = 200)),
+                                ) {
+                                    Row {
                                     TopAppBar(
                                         title = {
                                             Text(
@@ -1112,8 +1348,9 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                             }
-                        },
-                        bottomBar = {
+                        }
+                    },
+                    bottomBar = {
                             val currentBackStackEntry = navController.currentBackStackEntry // reads reactively outside remember
 
                             val onNavItemClick: (Screens, Boolean) -> Unit =
@@ -1448,7 +1685,7 @@ class MainActivity : ComponentActivity() {
                                             modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
                                         )
                                         Text(
-                                            text = release.cleanedDescription.ifBlank { stringResource(R.string.changelog_empty) },
+                                            text = release.description.ifBlank { stringResource(R.string.changelog_empty) },
                                             style = MaterialTheme.typography.bodySmall,
                                         )
                                     }
@@ -1473,83 +1710,11 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
-            }
-            }
         }
     }
-
-    @Composable
-    private fun SargamSplashScreen() {
-        var startAnimation by remember { mutableStateOf(false) }
-        val alphaAnim by animateFloatAsState(
-            targetValue = if (startAnimation) 1f else 0f,
-            animationSpec = tween(durationMillis = 800),
-            label = "splashAlpha",
-        )
-        val scaleAnim by animateFloatAsState(
-            targetValue = if (startAnimation) 1f else 0.85f,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessLow,
-            ),
-            label = "splashScale",
-        )
-
-        LaunchedEffect(Unit) {
-            startAnimation = true
-        }
-
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .background(Color.Black),
-            contentAlignment = Alignment.Center,
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier =
-                    Modifier
-                        .graphicsLayer(
-                            alpha = alphaAnim,
-                            scaleX = scaleAnim,
-                            scaleY = scaleAnim,
-                        ),
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.ic_launcher_sargam),
-                    contentDescription = "Sargam Logo",
-                    modifier =
-                        Modifier
-                            .size(140.dp)
-                            .clip(CircleShape),
-                )
-                Spacer(modifier = Modifier.height(20.dp))
-                Text(
-                    text = "Sargam",
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-
-            Box(
-                modifier =
-                    Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 48.dp)
-                        .graphicsLayer(alpha = alphaAnim),
-            ) {
-                Text(
-                    text = "Proudly Made in India 🇮🇳",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color(0xFFFF9933),
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-        }
-    }
+}
+}
+}
 
     /**
      * Handles the ACTION_RECOGNITION intent sent from the Music Recognizer Widget.
@@ -1721,6 +1886,39 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onProvideKeyboardShortcuts(
+        data: MutableList<KeyboardShortcutGroup>?,
+        menu: Menu?,
+        deviceId: Int
+    ) {
+        super.onProvideKeyboardShortcuts(data, menu, deviceId)
+        val mediaGroup = KeyboardShortcutGroup(
+            getString(R.string.media_controls),
+            listOf(
+                KeyboardShortcutInfo(getString(R.string.play_pause), KeyEvent.KEYCODE_SPACE, 0),
+                KeyboardShortcutInfo(getString(R.string.next), KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.META_CTRL_ON),
+                KeyboardShortcutInfo(getString(R.string.previous), KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.META_CTRL_ON),
+                KeyboardShortcutInfo(getString(R.string.seek_forward), KeyEvent.KEYCODE_DPAD_RIGHT, 0),
+                KeyboardShortcutInfo(getString(R.string.seek_backward), KeyEvent.KEYCODE_DPAD_LEFT, 0),
+                KeyboardShortcutInfo(getString(R.string.mute), KeyEvent.KEYCODE_M, 0),
+                KeyboardShortcutInfo(getString(R.string.like), KeyEvent.KEYCODE_L, 0),
+                KeyboardShortcutInfo(getString(R.string.shuffle), KeyEvent.KEYCODE_S, 0),
+                KeyboardShortcutInfo(getString(R.string.repeat), KeyEvent.KEYCODE_R, 0),
+            )
+        )
+        val navigationGroup = KeyboardShortcutGroup(
+            getString(R.string.search),
+            listOf(
+                KeyboardShortcutInfo(getString(R.string.search), KeyEvent.KEYCODE_F, KeyEvent.META_CTRL_ON),
+                KeyboardShortcutInfo(getString(R.string.home), KeyEvent.KEYCODE_1, KeyEvent.META_CTRL_ON),
+                KeyboardShortcutInfo(getString(R.string.filter_library), KeyEvent.KEYCODE_3, KeyEvent.META_CTRL_ON),
+                KeyboardShortcutInfo(getString(R.string.settings), KeyEvent.KEYCODE_5, KeyEvent.META_CTRL_ON),
+            )
+        )
+        data?.add(mediaGroup)
+        data?.add(navigationGroup)
+    }
+
     @SuppressLint("ObsoleteSdkInt")
     private fun setSystemBarAppearance(isDark: Boolean) {
         WindowCompat.getInsetsController(window, window.decorView.rootView).apply {
@@ -1745,3 +1943,4 @@ val LocalSyncUtils = staticCompositionLocalOf<SyncUtils> { error("No SyncUtils p
 val LocalListenTogetherManager = staticCompositionLocalOf<com.metrolist.music.listentogether.ListenTogetherManager?> { null }
 val LocalChangelogState = staticCompositionLocalOf<MutableState<Boolean>> { error("No LocalChangelogState provided") }
 val LocalIsPlayerExpanded = compositionLocalOf { false }
+val LocalNetworkConnectivity = staticCompositionLocalOf<NetworkConnectivityObserver?> { null }

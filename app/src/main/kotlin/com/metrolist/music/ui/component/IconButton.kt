@@ -31,6 +31,8 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -49,6 +51,7 @@ fun ResizableIconButton(
         contentDescription = null,
         colorFilter = ColorFilter.tint(color),
         modifier = modifier
+            .pointerHoverIcon(PointerIcon.Hand)
             .clickable(
                 indication = indication ?: ripple(bounded = false),
                 interactionSource = remember { MutableInteractionSource() },
@@ -72,6 +75,7 @@ fun IconButton(
 ) {
     Box(
         modifier = modifier
+            .pointerHoverIcon(PointerIcon.Hand)
             .minimumInteractiveComponentSize()
             .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
             .clip(CircleShape)

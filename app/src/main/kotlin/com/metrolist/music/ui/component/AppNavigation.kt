@@ -29,7 +29,16 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.liquidGlassCard
 import com.metrolist.music.ui.screens.Screens
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -112,6 +121,7 @@ fun AppNavigationRail(
             }
 
             NavigationRailItem(
+                modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
                 selected = isSelected,
                 onClick = {
                     if (!isSearchItem) {
@@ -143,13 +153,16 @@ fun AppNavigationBar(
     slimNav: Boolean = false,
     onSearchLongClick: (() -> Unit)? = null
 ) {
-    val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
+    val isDark = androidx.compose.foundation.isSystemInDarkTheme()
+    val containerColor = if (pureBlack) Color.Black.copy(alpha = 0.92f) else if (isDark) Color(0xDC121820) else Color(0xECFFFFFF)
     val contentColor = if (pureBlack) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
     val haptics = LocalHapticFeedback.current
     val viewConfiguration = LocalViewConfiguration.current
 
     NavigationBar(
-        modifier = modifier,
+        modifier = modifier
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .liquidGlassCard(shape = RoundedCornerShape(28.dp), elevation = 8.dp),
         containerColor = containerColor,
         contentColor = contentColor
     ) {
@@ -191,7 +204,14 @@ fun AppNavigationBar(
                 }
             }
 
+            val iconScale by animateFloatAsState(
+                targetValue = if (isSelected) 1.15f else 1.0f,
+                animationSpec = spring(dampingRatio = 0.65f, stiffness = 350f),
+                label = "navIconScale"
+            )
+
             NavigationBarItem(
+                modifier = Modifier.pointerHoverIcon(PointerIcon.Hand),
                 selected = isSelected,
                 onClick = {
                     if (!isSearchItem) {
@@ -203,7 +223,11 @@ fun AppNavigationBar(
                 icon = {
                     Icon(
                         painter = painterResource(id = iconRes),
-                        contentDescription = stringResource(screen.titleId)
+                        contentDescription = stringResource(screen.titleId),
+                        modifier = Modifier.graphicsLayer {
+                            scaleX = iconScale
+                            scaleY = iconScale
+                        }
                     )
                 },
                 label = if (!slimNav) {
