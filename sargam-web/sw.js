@@ -6,7 +6,7 @@ const urlsToCache = [
   './js/app.js',
   './js/player.js',
   './js/ui.js',
-  './assets/logo.svg',
+  './assets/sargam-icon.png',
   './assets/ic_launcher-playstore.png'
 ];
 
