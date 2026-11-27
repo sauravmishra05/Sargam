@@ -1,0 +1,19 @@
+{
+  "name": "Sargam Music",
+  "short_name": "Sargam",
+  "description": "Listen to unlimited high quality music, create playlists, and enjoy personalized AI recommendations.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#121820",
+  "theme_color": "#121820",
+  "orientation": "any",
+  "categories": ["music", "entertainment", "lifestyle"],
+  "icons": [
+    {
+      "src": "./assets/ic_launcher-playstore.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
